@@ -16,19 +16,29 @@ G1 generator serialization from blst python:
 b'17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1'
 */
 function testG1GenDeserialize(bls12381) {
-        // format is x|y where x/y are 48bytes, big-endian and in montgomery form
+        // format is x|y where x/y are 48bytes, big-endian and in normal form
         const serialized_g1 = '17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1'
 
-        // TODO convert the serialized values back to normal form
-
         let g1 = bls12381.G1.fromObject([
-            Scalar.e('3685416753713387016781088315183077757961620795782546409894578378688607592378376318836054947676345821548104185464507'),
-            Scalar.e('1339506544944476473020471379941921221584933875938349620426543736416511423956333506472724655353366534992391756441569'),
+            Scalar.e('0x' + serialized_g1.slice(0, 96)),
+            Scalar.e('0x' + serialized_g1.slice(96, 192)),
             Scalar.e("1")])
+        // g1 contains them in montgomery form now
 
         if (!bls12381.G1.eq(g1, bls12381.G1.g)) {
-            console.log("g1 deserialized != expected")
+            throw("g1 deserialized != expected")
         }
+}
+
+function testFrDiv(bls12381) {
+    let numerator = bls12381.Fr.e("1")
+    let denominator = bls12381.Fr.e("75938438467018613505185840030189280574570304335288797782286941539983385173022")
+    let result = bls12381.Fr.div(numerator, denominator)
+
+    if (bls12381.Fr.toString(result) != '6895111531152973771500592584011752520924525831071581118085026095310658613421') {
+        throw("division failed")
+    }
+    debugger
 }
 
 // proof consists of
@@ -40,6 +50,7 @@ function checkKZGMultiProof(multiproof, bls12381) {
         let power_of_r = bls12381.Fr.e("1")
         let E_coeffs = []
 
+        debugger
         for (let i = 0; i < multiproof.indices.length; i++) {
             // E_coeff = r**i / (t - D[i])
             // why is (t - D[i]) not a modular arithmetic operation in dankrad's code?
@@ -57,8 +68,8 @@ async function main() {
     bls12381 = await ffjavascript.buildBls12381(false)
     testG1Gen(bls12381)
     testG1GenDeserialize(bls12381)
-    checkKZGMultiProof(null, bls12381)
-    debugger
+    testFrDiv(bls12381)
+    //checkKZGMultiProof(null, bls12381)
 }
 
 main()
