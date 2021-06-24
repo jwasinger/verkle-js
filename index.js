@@ -1,6 +1,6 @@
 const ffjavascript = require('ffjavascript')
 const { Scalar } = require('ffjavascript')
-const {R,T, Domain, Commitments} = require('./test-proof.js')
+const {R,T, Y, Domain, Commitments} = require('./test-proof.js')
 
 let bls12381 = null
 
@@ -70,6 +70,8 @@ function checkKZGMultiProof(multiproof, bls12381) {
         // TODO compute t
         let t = bls12381.Fr.e(T)
 
+        let y = bls12381.Fr.e(Y)
+
         let domain = []
         let commitments = []
 
@@ -94,21 +96,23 @@ function checkKZGMultiProof(multiproof, bls12381) {
                 E = bls12381.G1.add(E, E_tmp)
             }
 
-            /*
-            // TODO
             g2_of_t_tmp = bls12381.Fr.mul(E_coeff, y)
-            console.log(g2_of_t_tmp.toString(16))
-            */
 
-            /*
-            g2_of_t = bls12381.Fr.add(g2_of_t, g2_of_t_tmp)
+            if (i == 0) {
+                g2_of_t = g2_of_t_tmp
+            } else {
+                g2_of_t = bls12381.Fr.add(g2_of_t, g2_of_t_tmp)
+            }
+
             power_of_r = bls12381.Fr.mul(power_of_r, r)
-            */
         }
 
-        debugger
         if (bls12381.G1.toString(bls12381.G1.toAffine(E)) !== "[ 2863729541235428038074680902469919598444056243294016551412581524402775855825918870718540951817007740496673787809381, 3803429439816810476289449546202412786626742571107793957759644254259286631166231648675238954486338073074716301387589 ]") {
             throw("calculate E failed")
+        }
+
+        if (bls12381.Fr.toString(g2_of_t,16) !== '28e9336dd28856c9d12753f0b7fcc1762629b6475f49549a7dcbcd09968b4b91') {
+            throw("bad g2(t)")
         }
 
         // TODO calculate E using multiExponentiation

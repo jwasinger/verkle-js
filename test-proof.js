@@ -1033,4 +1033,6 @@ const Commitments = [
 "12c3c5849e8d7350debb25910fb8f25665a49033ef5ae8644eb2fd9124a81e4b64b9640ec6300e5f03fcb949b7c3992c0f6ef9e02644726b3ff2321dc04fcdcfeef53452fb1d6794a3ecb907c758c508a3f580978e503221d1f2dd7537614423"
 ]
 
-module.exports = {Domain, Commitments, T, R}
+const Y = "0x62cd24140edb8a0f33d8ae4b376135c75def0fef71ddacd8cb5755c167e61da4"
+
+module.exports = {Domain, Commitments, T, R, Y}
