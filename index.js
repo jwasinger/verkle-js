@@ -1,6 +1,6 @@
 const ffjavascript = require('ffjavascript')
 const { Scalar } = require('ffjavascript')
-const {R,T, Y, Domain, Commitments} = require('./test-proof.js')
+const {Sigma, D, R,T, Y, Yis, Zis, Domain, Commitments} = require('./test-proof.js')
 
 let bls12381 = null
 
@@ -56,6 +56,22 @@ function testFrDiv(bls12381) {
     }
 }
 
+function checkProofSingle(commitment /* G1 */, proof /* G1 */, x /* Fr */, y /* Fr */, secret /* G2 */, bls12381) {
+    let g2 = bls12381.G2.g
+    let g1 = bls12381.G1.g
+
+    let x_g2 = bls12381.G2.timesFr(g2, x)
+
+    debugger
+    // TODO seems to be differing from go-verkle/hbls at the following call
+    let SminusX = bls12381.G2.sub(secret, x_g2)
+
+    let y_g1 = bls12381.G1.timesFr(g1, y)
+    let commitmentMinusY = bls12381.G1.sub(commitment, y_g1)
+
+    // pairingEq2(...)
+}
+
 // proof consists of
 // D - commitment
 // sigma - ?
@@ -74,9 +90,15 @@ function checkKZGMultiProof(multiproof, bls12381) {
 
         let domain = []
         let commitments = []
+        let yis = []
 
         domain[0] = bls12381.Fr.e(Domain[0])
         commitments[0] = G1Deserialize(Commitments[0])
+        yis[0] = bls12381.Fr.e(Yis[0])
+
+
+        let d = G1Deserialize(D)
+        let sigma = G1Deserialize(Sigma)
 
         let E = G1Gen()
         let E_tmp = G1Gen()
@@ -96,7 +118,7 @@ function checkKZGMultiProof(multiproof, bls12381) {
                 E = bls12381.G1.add(E, E_tmp)
             }
 
-            g2_of_t_tmp = bls12381.Fr.mul(E_coeff, y)
+            g2_of_t_tmp = bls12381.Fr.mul(E_coeff, yis[i])
 
             if (i == 0) {
                 g2_of_t = g2_of_t_tmp
@@ -120,15 +142,32 @@ function checkKZGMultiProof(multiproof, bls12381) {
         // TODO calc q
         // let q = ...
 
-        let q = bls12381.Fr.e("00c05af75ff19dd796afdc7002121f4003e1f4ebdd19e9fd04e84a097485f310")
+        let q = bls12381.Fr.e("0x00c05af75ff19dd796afdc7002121f4003e1f4ebdd19e9fd04e84a097485f310")
 
-        let fin = bls12381.G1.timesScalar(D, q)
+        let fin = bls12381.G1.timesFr(d, q)
         fin = bls12381.G1.add(fin, E)
+
+        if (bls12381.G1.toString(bls12381.G1.toAffine(fin)) !== '[ 2485367357624841870184630880365423354054457870827342932630250224385421682956280445567412527105499779092976866423233, 2924182078288239842491532911116314396141039828861356997766464230897415335947125071237343152797629017188019551124016 ]') {
+            throw("bad fin value")
+        }
 
         let finAt = bls12381.Fr.mul(w, q)
         finAt = bls12381.Fr.add(finAt, y)
 
-        // return checkProofSingle(fin, sigma, t, finAt)
+        if (bls12381.Fr.toString(finAt, 16) !== '52c88c2276e617a3dbe517afadb4884f101954c96cd5d7a6790fcbda611ba502') {
+            throw("bad finAt value")
+        }
+
+        let secret = bls12381.G2.fromObject([
+            [Scalar.e("2128729237199874250215129762343714920720279411489563687929418278583868633058394659232382887990088775320953140642463"), Scalar.e("400479420466020439964245709617721188021173325950213531745899746559510361002891496236076189665548211399452952511078")],
+            [Scalar.e("51862454752399442665654315116469814937243911105276497796352599957005996288034152334571289934845024913207096849346"), Scalar.e("2744214796388045889889136369721601905102309417661895746148694321349808889807430448570396683944137547401246256236596")],
+            [Scalar.one, Scalar.zero]])
+
+        if (!checkProofSingle(fin, sigma, t, finAt, secret, bls12381)) {
+            throw("pairing check failed")
+        }
+
+        console.log("done")
 }
 
 async function main() {
