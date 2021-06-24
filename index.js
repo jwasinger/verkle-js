@@ -115,8 +115,20 @@ function checkKZGMultiProof(multiproof, bls12381) {
             throw("bad g2(t)")
         }
 
-        // TODO calculate E using multiExponentiation
-        // let E = bls12381.G1.multiExp(commitments, E_coeffs)
+        let w = bls12381.Fr.sub(y, g2_of_t)
+
+        // TODO calc q
+        // let q = ...
+
+        let q = bls12381.Fr.e("00c05af75ff19dd796afdc7002121f4003e1f4ebdd19e9fd04e84a097485f310")
+
+        let fin = bls12381.G1.timesScalar(D, q)
+        fin = bls12381.G1.add(fin, E)
+
+        let finAt = bls12381.Fr.mul(w, q)
+        finAt = bls12381.Fr.add(finAt, y)
+
+        // return checkProofSingle(fin, sigma, t, finAt)
 }
 
 async function main() {
