@@ -56,27 +56,47 @@ function testFrDiv(bls12381) {
     }
 }
 
-function checkProofSingle(commitment /* G1 */, proof /* G1 */, x /* Fr */, y /* Fr */, secret /* G2 */, bls12381) {
+async function checkProofSingle(commitment /* G1 */, proof /* G1 */, x /* Fr */, y /* Fr */, secret /* G2 */, bls12381) {
     let g2 = bls12381.G2.g
     let g1 = bls12381.G1.g
 
     let x_g2 = bls12381.G2.timesFr(g2, x)
 
-    debugger
-    // TODO seems to be differing from go-verkle/hbls at the following call
     let SminusX = bls12381.G2.sub(secret, x_g2)
+    // TODO why does go-verkle (and py-ecc?) produce the following value for previous g2 sub.  field extensions defined differently?
+    /*
+    let SminusX = bls12381.G2.fromObject([
+        [Scalar.e("1193557042592112721288173917138204359901134424643355585098025015679548083423715813958365754670471099682462091103208"), Scalar.e("778791567935863601924538640408302293921001519338459249044453261628148386878242876641222136734118711916514481027967")],
+        [Scalar.e("3924951945555214645101060899470911165588380091127123185083563599268702238099847033474609269832181621319468405639673"),
+        Scalar.e("1358176085074515544225842837330921477510323131483689969438883884045834609879271088354350669324384462533525172019489")],
+        [Scalar.one, Scalar.zero]])
+    */
 
     let y_g1 = bls12381.G1.timesFr(g1, y)
     let commitmentMinusY = bls12381.G1.sub(commitment, y_g1)
 
-    // pairingEq2(...)
+    // example of pairing without pairingEq
+    let p1 = bls12381.pairing(bls12381.G1.g, bls12381.G2.g)
+    let p2 = bls12381.pairing(bls12381.G1.neg(bls12381.G1.g), bls12381.G2.g)
+    let result = bls12381.F12.mul(p1, p2)
+    if (!bls12381.F12.eq(result, bls12381.F12.one)) {
+        throw("basic pairing check should work...")
+    }
+
+    // pairing example using pairingEq
+    let pOne = bls12381.F12.one
+    let res2 = await bls12381.pairingEq(bls12381.G1.g, bls12381.G2.g, bls12381.G1.neg(bls12381.G1.g), bls12381.G2.g)
+
+    // check e([commitment - y], [1]) = e([proof],  [s - x])
+    let res3 = await bls12381.pairingEq(commitmentMinusY, bls12381.G2.g, proof, SminusX)
+    return res3
 }
 
 // proof consists of
 // D - commitment
 // sigma - ?
 // y - ?
-function checkKZGMultiProof(multiproof, bls12381) {
+async function checkKZGMultiProof(multiproof, bls12381) {
         let g2_of_t = bls12381.Fr.e("0")
         let power_of_r = bls12381.Fr.e("1")
 
@@ -163,7 +183,8 @@ function checkKZGMultiProof(multiproof, bls12381) {
             [Scalar.e("51862454752399442665654315116469814937243911105276497796352599957005996288034152334571289934845024913207096849346"), Scalar.e("2744214796388045889889136369721601905102309417661895746148694321349808889807430448570396683944137547401246256236596")],
             [Scalar.one, Scalar.zero]])
 
-        if (!checkProofSingle(fin, sigma, t, finAt, secret, bls12381)) {
+        let valid = await checkProofSingle(fin, sigma, t, finAt, secret, bls12381)
+        if (!valid) {
             throw("pairing check failed")
         }
 
